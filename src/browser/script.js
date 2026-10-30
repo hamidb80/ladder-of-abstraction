@@ -6,6 +6,63 @@ function assignKeys(items) {
 }
 assignKeys(window.DATA)
 
+/**
+ * damn simple markdown parser to avoid buggy JS libs
+ * @param {markdown code} src 
+ * @returns HTML represenatation
+ */
+function linear_MD_parser(src) {
+    const RULES = [
+        // order matters if a longer delimiter shares a prefix with a shorter one
+        { start: "`", re: /`([^`]+)`/y, type: "code", raw: true },
+        { start: "$", re: /\$([^$]+)\$/y, type: "math", raw: true },
+        { start: "**", re: /\*\*(.+?)\*\*/y, type: "bold" },
+        { start: "==", re: /==(.+?)==/y, type: "highlight" },
+        { start: "_", re: /_([^_]+)_/y, type: "italic" },
+    ]
+
+    const out = []
+    let text = ""
+    let i = 0
+
+    const flush = () => {
+        if (text) {
+            out.push({ type: "text", value: text })
+            text = ""
+        }
+    }
+
+    while (i < src.length) {
+        const ch = src[i]
+
+        if (ch === "\\") {
+            text += i + 1 < src.length ? src[++i] : "\\"
+            i++
+            continue
+        }
+
+        const rule = RULES.find(r => src.startsWith(r.start, i))
+        if (rule) {
+            rule.re.lastIndex = i
+            const m = rule.re.exec(src)
+            if (m) {
+                flush()
+                const value = rule.raw ? m[1] : m[1].replace(/\\(.)/g, "$1")
+                out.push({ type: rule.type, value })
+                i += m[0].length
+                continue
+            }
+            // prefix present but no closer (e.g. "**a" or "==b") → literal
+        }
+
+        text += ch
+        i++
+    }
+
+    flush()
+    return out
+}
+
 function app() {
     return {
         MAX_LEVEL: window.MAX_LEVEL,
@@ -87,7 +144,20 @@ function node(item, root) {
             return item.children.filter(c => c.effective_level >= root.minLevel)
         },
         get md() {
-            return marked.parse(item.comment, { breaks: false, gfm: true })
+            const escapeHtml = x => x
+            const result = linear_MD_parser(item.comment)
+                .map(it => {
+                    if (it.type === "text") return `<span>${escapeHtml(it.value)}</span>`
+                    if (it.type === "code") return `<code>${escapeHtml(it.value)}</code>`
+                    if (it.type === "bold") return `<strong>${escapeHtml(it.value)}</strong>`
+                    if (it.type === "highlight") return `<mark>${escapeHtml(it.value)}</mark>`
+                    if (it.type === "italic") return `<em>${escapeHtml(it.value)}</em>`
+                    if (it.type === "math") return katex.renderToString(it.value, { throwOnError: false })
+                })
+                .join("")
+
+            console.log(result)
+            return result
         },
         get caretHtml() {
             if (!this.kids.length) return ""
