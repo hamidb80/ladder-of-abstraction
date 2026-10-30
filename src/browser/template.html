@@ -45,7 +45,7 @@
                     <span class="caret" :class="{ clickable: kids.length }" @click.stop="collapsed = !collapsed" x-html="caretHtml"></span>
                     <div class="body">
                         <!-- <span class="lineno" x-text="'L' + item.line"></span> -->
-                        <span x-html="item.html" :title="'L' + item.line"></span>
+                        <span x-html="item.html"></span>
                         <!-- <template x-if="item.level > 0">
                             <span class="levelpill" x-text="'L' + item.level"></span>
                         </template> -->
