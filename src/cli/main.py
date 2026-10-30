@@ -6,6 +6,9 @@ import re
 import sys
 import os
 from pathlib import Path
+from dataclasses import dataclass
+
+import latex2mathml.converter
 
 
 current_file = Path(__file__).resolve()
@@ -13,6 +16,72 @@ PATT = r"^(?P<indent>[ \t]*)(?P<code>.*?)#\.\s*(?P<level>\d+)?\s?(?P<comment>.*)
 COMMENT_RE = re.compile(PATT)
 HTML_TEMPLATE = Path(current_file.parent.parent / "browser" / 'template.html').read_text(encoding="utf-8")
 
+
+def linear_md_parser(src):
+    @dataclass
+    class Rule:
+        start: str
+        re: "re.Pattern"
+        type: str
+        raw: bool = False
+
+    rules = [
+        Rule("`", re.compile(r"`([^`]+)`"), "code", True),
+        Rule("$",  re.compile(r"\$([^$]+)\$"), "math", True),
+        Rule("**", re.compile(r"\*\*(.+?)\*\*"), "bold"),
+        Rule("==", re.compile(r"==(.+?)=="), "highlight"),
+        Rule("_",  re.compile(r"_([^_]+)_"), "italic"),
+    ]
+    unescape = re.compile(r"\\(.)")
+
+    out, text, i, n = [], [], 0, len(src)
+
+    def flush():
+        if text:
+            out.append({"type": "text", "value": "".join(text)})
+            text.clear()
+
+    while i < n:
+        ch = src[i]
+
+        if ch == "\\":
+            text.append(src[i + 1] if i + 1 < n else "\\")
+            i += 2 if i + 1 < n else 1
+            continue
+
+        rule = next((r for r in rules if src.startswith(r.start, i)), None)
+        if rule:
+            m = rule.re.match(src, i)
+            if m:
+                flush()
+                v = m.group(1) if rule.raw else unescape.sub(r"\1", m.group(1))
+                out.append({"type": rule.type, "value": v})
+                i = m.end()
+                continue
+
+        text.append(ch)
+        i += 1
+
+    flush()
+
+    def esc(s):
+        return html.escape(s, quote=True)
+
+    def mathml(v):
+        try:
+            return latex2mathml.converter.convert(v)
+        except Exception:
+            return f"<code>{esc(v)}</code>"
+
+    R = {
+        "text": esc,
+        "code": lambda v: f"<code>{esc(v)}</code>",
+        "bold": lambda v: f"<strong>{esc(v)}</strong>",
+        "italic": lambda v: f"<em>{esc(v)}</em>",
+        "highlight": lambda v: f"<mark>{esc(v)}</mark>",
+        "math": mathml,
+    }
+    return "".join(R[t["type"]](t["value"]) for t in out)
 
 def extract_comments(source: str) -> list[dict]:
     """Iterate lines and collect special `#.` comments."""
@@ -28,7 +97,7 @@ def extract_comments(source: str) -> list[dict]:
                     "indent": indent_width,
                     "level": level,
                     "raw_line": line.rstrip("\n"),
-                    "comment": m.group("comment").strip(),
+                    "comment": linear_md_parser(m.group("comment").strip()),
                 })
     return items
 
