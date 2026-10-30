@@ -146,7 +146,7 @@ def dump_tree(nodes: list[dict], depth: int = 0) -> None:
         )
         dump_tree(n["children"], depth + 1)
 
-def render_html(items: list[dict], title: str, file_path: str, max_lvl: int, count: int) -> str:
+def render_html(files: list[dict], items: list[dict], title: str, file_path: str, max_lvl: int, count: int) -> str:
     return (
         HTML_TEMPLATE
         .replace("__TITLE__", html.escape(title))
@@ -154,6 +154,9 @@ def render_html(items: list[dict], title: str, file_path: str, max_lvl: int, cou
         .replace("__DATA_JSON__", json.dumps(items, ensure_ascii=False))
         .replace("__FILE_PATH_JSON__", json.dumps(file_path))
         .replace("__MAX_LEVEL__", str(max_lvl))
+        .replace("__LIB_ALPINE__", files['alpine.min.js'])
+        .replace("__SCRIPT__", files['script.js'])
+        .replace("__STYLES__", files['style.css'])
     )
 
 
@@ -181,14 +184,19 @@ def main() -> int:
             max_lvl = max_level(tree)
             title = args.title or args.input.name
             abs_path = str(args.input.resolve())
-            out = render_html(tree, title, abs_path, max_lvl, len(flat))
+            files = {}
 
             os.makedirs(args.output, exist_ok=True)
-            (args.output / "index.html").write_text(out, encoding="utf-8")
             for p in (current_file.parent.parent / "browser").iterdir():
                 if p.is_file():
                     shutil.copy(p, args.output)
+                    with open(p) as f:
+                        content = f.read()
+                    files[p.name] = content
 
+            print(files.keys())
+            out = render_html(files, tree, title, abs_path, max_lvl, len(flat))
+            (args.output / "index.html").write_text(out, encoding="utf-8")
             print(f"wrote {len(flat)} comment(s) -> {args.output}")
 
 
