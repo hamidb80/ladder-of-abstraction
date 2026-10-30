@@ -74,7 +74,7 @@ def linear_md_parser(src):
             return f"<code>{esc(v)}</code>"
 
     R = {
-        "text": esc,
+        "text": lambda v: f"<span>{esc(v)}</span>",
         "code": lambda v: f"<code>{esc(v)}</code>",
         "bold": lambda v: f"<strong>{esc(v)}</strong>",
         "italic": lambda v: f"<em>{esc(v)}</em>",
@@ -96,8 +96,8 @@ def extract_comments(source: str) -> list[dict]:
                     "line": lineno,
                     "indent": indent_width,
                     "level": level,
-                    "raw_line": line.rstrip("\n"),
-                    "comment": linear_md_parser(m.group("comment").strip()),
+                    "raw_line": line.strip(),
+                    "html": linear_md_parser(m.group("comment").strip()),
                 })
     return items
 

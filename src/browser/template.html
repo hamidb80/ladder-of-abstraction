@@ -34,6 +34,7 @@
 
         <div class="footer" x-text="footerText"></div>
 
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
         <script src="./script.js"></script>
 
         <!-- Recursive node template -->
@@ -43,7 +44,7 @@
                     <span class="caret" :class="{ clickable: kids.length }" @click.stop="collapsed = !collapsed" x-html="caretHtml"></span>
                     <div class="body">
                         <!-- <span class="lineno" x-text="'L' + item.line"></span> -->
-                        <span x-html="md" :title="'L' + item.line"></span>
+                        <span x-html="item.html" :title="'L' + item.line"></span>
                         <!-- <template x-if="item.level > 0">
                             <span class="levelpill" x-text="'L' + item.level"></span>
                         </template> -->
