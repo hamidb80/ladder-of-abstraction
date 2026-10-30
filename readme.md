@@ -24,3 +24,9 @@ Effective level rule (parent derives importance from children):
 ```sh
 watchexec -i ./src -e py,html,js,css -r "python3-64.exe .\src\cli\main.py .\test\face.py"
 ```
+and then open the `.html` file 
+or 
+```sh
+npm i http-server
+http-server -c-1 ./path/to/dir/
+```
