@@ -189,7 +189,7 @@ def main() -> int:
             os.makedirs(args.output, exist_ok=True)
             for p in (current_file.parent.parent / "browser").iterdir():
                 if p.is_file():
-                    shutil.copy(p, args.output)
+                    # shutil.copy(p, args.output)
                     with open(p) as f:
                         content = f.read()
                     files[p.name] = content
